@@ -2,7 +2,11 @@
 import { supabase, toCents, getMonthStart } from "@/lib/supabase";
 
 export async function ensureProfile(user_id: string) {
-  await supabase.from("profiles").upsert({ id: user_id });
+  const { error } = await supabase.from("profiles").upsert({ id: user_id });
+  if (error) {
+    console.error("Error creating profile:", error);
+    throw new Error("Failed to create profile");
+  }
 }
 
 export async function ensurePeriod(user_id: string, d = new Date()) {
@@ -19,9 +23,13 @@ export async function ensurePeriod(user_id: string, d = new Date()) {
       .insert({ user_id, month_start })
       .select("id")
       .single();
-    data = ins.data!;
+    if (ins.error) {
+      console.error("Error creating period:", ins.error);
+      throw new Error("Failed to create period");
+    }
+    data = ins.data;
   }
-  return data.id as string;
+  return data?.id as string;
 }
 
 // ---------- recurring CRUD ----------
