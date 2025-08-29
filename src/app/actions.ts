@@ -33,14 +33,24 @@ export async function ensurePeriod(user_id: string, d = new Date()) {
 }
 
 // ---------- recurring CRUD ----------
-export async function upsertRecurring(user_id: string, kind: 'savings'|'investment'|'spend', amount: number) {
+export async function addRecurring(user_id: string, kind: 'savings'|'investment'|'spend', amount: number, description: string) {
+  const amount_cents = toCents(amount);
+  const { error } = await supabase
+    .from("recurring_allocations")
+    .insert({ user_id, kind, amount_cents, description })
+    .select()
+    .single();
+  return { ok: !error, reason: error?.message } as const;
+}
+
+export async function updateRecurring(user_id: string, id: string, amount: number, description: string) {
   const amount_cents = toCents(amount);
   const { data: existing } = await supabase
     .from("recurring_allocations")
-    .select("id, active, amount_cents")
+    .select("active, amount_cents")
+    .eq("id", id)
     .eq("user_id", user_id)
-    .eq("kind", kind)
-    .maybeSingle();
+    .single();
 
   // If currently active and we are increasing amount, we must pass guard
   if (existing?.active) {
@@ -53,20 +63,22 @@ export async function upsertRecurring(user_id: string, kind: 'savings'|'investme
 
   const { error } = await supabase
     .from("recurring_allocations")
-    .upsert({ user_id, kind, amount_cents })
+    .update({ amount_cents, description })
+    .eq("id", id)
+    .eq("user_id", user_id)
     .select()
     .single();
   return { ok: !error, reason: error?.message } as const;
 }
 
-export async function setRecurringActive(user_id: string, kind: 'savings'|'investment'|'spend', active: boolean) {
+export async function setRecurringActive(user_id: string, id: string, active: boolean) {
   if (active) {
     // turning ON → must be able to afford full amount
     const { data } = await supabase
       .from("recurring_allocations")
       .select("amount_cents")
+      .eq("id", id)
       .eq("user_id", user_id)
-      .eq("kind", kind)
       .single();
     const amt = data?.amount_cents ?? 0;
     const ok = await canAfford(user_id, amt);
@@ -74,9 +86,20 @@ export async function setRecurringActive(user_id: string, kind: 'savings'|'inves
   }
   const { error } = await supabase
     .from("recurring_allocations")
-    .upsert({ user_id, kind, active })
+    .update({ active })
+    .eq("id", id)
+    .eq("user_id", user_id)
     .select()
     .single();
+  return { ok: !error, reason: error?.message } as const;
+}
+
+export async function deleteRecurring(user_id: string, id: string) {
+  const { error } = await supabase
+    .from("recurring_allocations")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user_id);
   return { ok: !error, reason: error?.message } as const;
 }
 
@@ -167,11 +190,10 @@ export async function fetchSummary(user_id: string) {
 export async function getRecurring(user_id: string) {
   const { data } = await supabase
     .from("recurring_allocations")
-    .select("kind, amount_cents, active")
-    .eq("user_id", user_id);
-  const map = { savings: { amount_cents: 0, active: false }, investment: { amount_cents: 0, active: false }, spend: { amount_cents: 0, active: false } } as any;
-  (data ?? []).forEach(r => { map[r.kind] = { amount_cents: r.amount_cents, active: r.active }; });
-  return map as { [k in 'savings'|'investment'|'spend']: { amount_cents: number, active: boolean } };
+    .select("id, kind, amount_cents, active, description")
+    .eq("user_id", user_id)
+    .order("created_at", { ascending: false });
+  return data || [];
 }
 
 async function getRecurringActive(user_id: string) {

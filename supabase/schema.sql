@@ -53,16 +53,16 @@ create table if not exists investment_trades (
   created_at timestamptz default now()
 );
 
--- Global recurring allocations (no monthly reset)
+-- Global recurring allocations (no monthly reset) - now allows multiple per kind
 -- kind: 'savings' | 'investment' | 'spend'
 create table if not exists recurring_allocations (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references profiles(id) on delete cascade,
   kind text not null check (kind in ('savings','investment','spend')),
   amount_cents bigint not null check (amount_cents >= 0),
+  description text not null,
   active boolean not null default true,
-  created_at timestamptz default now(),
-  unique(user_id, kind)
+  created_at timestamptz default now()
 );
 
 -- Helper views for current month totals
