@@ -87,6 +87,26 @@ export async function addIncome(user_id: string, amount: number, note?: string) 
   return { ok: true as const };
 }
 
+export async function deleteIncome(user_id: string, income_id: string) {
+  const { error } = await supabase
+    .from("incomes")
+    .delete()
+    .eq("id", income_id)
+    .eq("user_id", user_id);
+  return { ok: !error, reason: error?.message } as const;
+}
+
+export async function getIncomes(user_id: string) {
+  const period_id = await ensurePeriod(user_id);
+  const { data } = await supabase
+    .from("incomes")
+    .select("id, amount_cents, note, created_at")
+    .eq("user_id", user_id)
+    .eq("period_id", period_id)
+    .order("created_at", { ascending: false });
+  return data || [];
+}
+
 export async function addExpense(user_id: string, merchant: string, amount: number, category?: string) {
   const amt = toCents(amount);
   const ok = await canAfford(user_id, amt);

@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
-import { addIncome, fetchSummary, ensureProfile } from "./actions";
+import { addIncome, fetchSummary, ensureProfile, deleteIncome, getIncomes } from "./actions";
 import { fromCents, getOrCreateDemoUser } from "@/lib/supabase";
 import { Modal } from "./components/Modal";
 
 export default function Page() {
   const [userId, setUserId] = useState<string | null>(null);
   const [sum, setSum] = useState<any>(null);
+  const [incomes, setIncomes] = useState<any[]>([]);
   const [income, setIncome] = useState<number | "">("");
   const [note, setNote] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -18,8 +19,9 @@ export default function Page() {
   }, []);
 
   async function refresh(id: string) {
-    const s = await fetchSummary(id);
+    const [s, i] = await Promise.all([fetchSummary(id), getIncomes(id)]);
     setSum(s);
+    setIncomes(i);
   }
 
   async function onAddIncome(e: React.FormEvent) {
@@ -39,6 +41,12 @@ export default function Page() {
   const savingsTotal = fromCents((sum?.rec_savings_cents ?? 0) + (sum?.savings_oneoff_cents ?? 0));
   const investTotal = fromCents((sum?.rec_invest_cents ?? 0) + (sum?.invest_oneoff_cents ?? 0));
   const spendTotal  = fromCents((sum?.rec_spend_cents ?? 0) + (sum?.expense_cents ?? 0));
+
+  async function onDeleteIncome(incomeId: string) {
+    if (!userId) return;
+    await deleteIncome(userId, incomeId);
+    await refresh(userId);
+  }
 
   return (
     <main>
@@ -60,6 +68,54 @@ export default function Page() {
           <button type="submit">Add</button>
         </form>
       </section>
+
+      {incomes.length > 0 && (
+        <section>
+          <h2>Income History</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {incomes.map((inc) => (
+              <div key={inc.id} style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '15px',
+                background: 'rgba(102, 126, 234, 0.1)',
+                borderRadius: '10px',
+                border: '1px solid rgba(102, 126, 234, 0.2)'
+              }}>
+                <div>
+                  <div style={{ fontWeight: 'bold', fontSize: '16px' }}>
+                    ${fromCents(inc.amount_cents).toFixed(2)}
+                  </div>
+                  {inc.note && (
+                    <div style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>
+                      {inc.note}
+                    </div>
+                  )}
+                  <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                    {new Date(inc.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+                <button 
+                  onClick={() => onDeleteIncome(inc.id)}
+                  style={{
+                    background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section>
         <h2>Financial Summary</h2>

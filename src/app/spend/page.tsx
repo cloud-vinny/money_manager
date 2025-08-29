@@ -29,7 +29,7 @@ export default function SpendPage() {
     if(!userId) return;
     const res = await setRecurringActive(userId, 'spend', !rec.active);
     if(!res.ok) { 
-      setErr("Not enough balance to activate this rule."); 
+      setErr("Not enough balance to activate this rule. Try reducing the amount first."); 
       return; 
     }
     await refresh(userId);
