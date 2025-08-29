@@ -1,4 +1,12 @@
 import './globals.css';
+import { ThemeToggle } from './components/ThemeToggle';
+import { getTheme, setTheme } from '@/lib/theme';
+
+// Initialize theme on server side
+if (typeof window !== 'undefined') {
+  const theme = getTheme();
+  setTheme(theme);
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -6,7 +14,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <div className="container">
           <header>
-            <h1>💸 Money Manager</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h1>💸 Money Manager</h1>
+              <ThemeToggle />
+            </div>
             <nav>
               <a href="/">Dashboard</a>
               <a href="/spend">Spend</a>
