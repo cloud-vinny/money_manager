@@ -62,18 +62,31 @@ export default function Page() {
       </section>
 
       <section>
-        <div>
-          <div>Income: ${fromCents(sum?.income_cents ?? 0).toFixed(2)}</div>
-          <div>Savings (recurring + one-offs): ${savingsTotal.toFixed(2)}</div>
-          <div>Investments (recurring + one-offs): ${investTotal.toFixed(2)}</div>
-          <div>Spending (recurring + one-offs): ${spendTotal.toFixed(2)}</div>
+        <h2>Financial Summary</h2>
+        <div className="summary-grid">
+          <div className="summary-item">
+            <div className="summary-label">Income</div>
+            <div className="summary-value">${fromCents(sum?.income_cents ?? 0).toFixed(2)}</div>
+          </div>
+          <div className="summary-item">
+            <div className="summary-label">Savings (recurring + one-offs)</div>
+            <div className="summary-value">${savingsTotal.toFixed(2)}</div>
+          </div>
+          <div className="summary-item">
+            <div className="summary-label">Investments (recurring + one-offs)</div>
+            <div className="summary-value">${investTotal.toFixed(2)}</div>
+          </div>
+          <div className="summary-item">
+            <div className="summary-label">Spending (recurring + one-offs)</div>
+            <div className="summary-value">${spendTotal.toFixed(2)}</div>
+          </div>
         </div>
       </section>
 
-      <section>
+      <section className="remaining-balance">
         <h2>Remaining to Spend</h2>
-        <p>${fromCents(sum?.remaining_cents ?? 0).toFixed(2)}</p>
-        <p>For {sum?.month_start}</p>
+        <div className="remaining-amount">${fromCents(sum?.remaining_cents ?? 0).toFixed(2)}</div>
+        <div className="remaining-period">For {sum?.month_start}</div>
       </section>
 
       <Modal open={!!err} onClose={()=>setErr(null)} title="Oops">
