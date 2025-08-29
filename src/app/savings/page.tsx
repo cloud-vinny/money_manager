@@ -1,16 +1,20 @@
 "use client";
 import { useEffect, useState } from "react";
-import { addSavingsTransfer, ensureProfile, fetchSummary, getRecurring, setRecurringActive, upsertRecurring } from "../actions";
+import { addSavingsTransfer, ensureProfile, fetchSummary, getRecurring, setRecurringActive, addRecurring, updateRecurring, deleteRecurring } from "../actions";
 import { fromCents, getOrCreateDemoUser } from "@/lib/supabase";
 import { Modal } from "../components/Modal";
 
 export default function SavingsPage() {
   const [userId, setUserId] = useState<string|null>(null);
   const [sum, setSum] = useState<any>(null);
-  const [rec, setRec] = useState<{amount_cents:number, active:boolean}>({amount_cents:0, active:false});
+  const [recurringSavings, setRecurringSavings] = useState<any[]>([]);
   const [amount, setAmount] = useState<number|"">("");
   const [note, setNote] = useState("");
   const [err, setErr] = useState<string|null>(null);
+  
+  // New recurring savings form
+  const [newRecurringAmount, setNewRecurringAmount] = useState<number|"">("");
+  const [newRecurringDescription, setNewRecurringDescription] = useState("");
 
   useEffect(() => {
     const id = getOrCreateDemoUser(); 
@@ -21,31 +25,60 @@ export default function SavingsPage() {
   async function refresh(id: string) {
     const [s, r] = await Promise.all([fetchSummary(id), getRecurring(id)]);
     setSum(s); 
-    setRec(r.savings);
+    setRecurringSavings(r.filter((item: any) => item.kind === 'savings'));
   }
 
-  async function onToggle() {
+  async function onToggleRecurring(id: string, currentActive: boolean) {
     if(!userId) return;
-    const res = await setRecurringActive(userId,'savings', !rec.active);
+    const res = await setRecurringActive(userId, id, !currentActive);
     if(!res.ok) { 
-      setErr("Not enough balance to activate this rule."); 
+      setErr("Not enough balance to activate this rule. Try reducing the amount first."); 
       return; 
     }
     await refresh(userId);
   }
 
-  async function onUpdateAmount() {
+  async function onAddRecurring(e: React.FormEvent) {
+    e.preventDefault();
+    if(!userId) return;
+    const amt = typeof newRecurringAmount==='number'?newRecurringAmount:parseFloat(String(newRecurringAmount||0));
+    if(isNaN(amt)||amt<=0) { 
+      setErr("Enter a valid amount."); 
+      return; 
+    }
+    if(!newRecurringDescription.trim()) {
+      setErr("Enter a description for this recurring savings.");
+      return;
+    }
+    const res = await addRecurring(userId, 'savings', amt, newRecurringDescription.trim());
+    if(!res.ok) { 
+      setErr("Failed to add recurring savings."); 
+      return; 
+    }
+    setNewRecurringAmount("");
+    setNewRecurringDescription("");
+    await refresh(userId);
+  }
+
+  async function onUpdateRecurring(id: string, currentAmount: number, currentDescription: string) {
     if(!userId) return; 
     const amt = typeof amount==='number'?amount:parseFloat(String(amount||0));
     if(isNaN(amt)||amt<0) { 
       setErr("Enter a valid amount."); 
       return; 
     }
-    const res = await upsertRecurring(userId,'savings', amt);
+    const res = await updateRecurring(userId, id, amt, currentDescription);
     if(!res.ok) { 
       setErr("Not enough balance for that amount while active."); 
       return; 
     }
+    setAmount("");
+    await refresh(userId);
+  }
+
+  async function onDeleteRecurring(id: string) {
+    if(!userId) return;
+    await deleteRecurring(userId, id);
     await refresh(userId);
   }
 
@@ -67,33 +100,98 @@ export default function SavingsPage() {
     await refresh(userId);
   }
 
-  const totalSavings = fromCents((sum?.rec_savings_cents ?? 0) + (sum?.savings_oneoff_cents ?? 0));
+  const totalRecurringSavings = recurringSavings
+    .filter((sav: any) => sav.active)
+    .reduce((sum: number, sav: any) => sum + sav.amount_cents, 0);
+
+  const totalSavings = fromCents(totalRecurringSavings + (sum?.savings_oneoff_cents ?? 0));
 
   return (
     <main>
       <section>
-        <h2>Recurring Savings Rule</h2>
-        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '15px' }}>
-          <input 
-            type="number" 
-            step="0.01" 
-            defaultValue={fromCents(rec.amount_cents)} 
-            onChange={e=>setAmount(parseFloat(e.target.value))} 
-            placeholder="Amount"
-            style={{ width: '150px' }}
-          />
-          <button onClick={onUpdateAmount}>Save Amount</button>
-          <button 
-            onClick={onToggle} 
-            style={{ 
-              background: rec.active ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #6b7280, #4b5563)'
-            }}
-          >
-            {rec.active ? 'Active' : 'Inactive'}
-          </button>
-        </div>
-        <div style={{ fontSize: '14px', color: '#666' }}>
-          Saved (recurring + one-offs) this month: ${totalSavings.toFixed(2)}
+        <h2>Recurring Savings</h2>
+        
+        {/* Add new recurring savings */}
+        <form onSubmit={onAddRecurring} style={{ marginBottom: '20px', padding: '15px', background: 'rgba(102, 126, 234, 0.1)', borderRadius: '10px' }}>
+          <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Add New Recurring Savings</h3>
+          <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <input 
+              type="number" 
+              step="0.01" 
+              value={newRecurringAmount} 
+              onChange={e=>setNewRecurringAmount(e.target.value===""?"":parseFloat(e.target.value))} 
+              placeholder="Amount"
+              style={{ width: '150px' }}
+            />
+            <input 
+              value={newRecurringDescription} 
+              onChange={e=>setNewRecurringDescription(e.target.value)} 
+              placeholder="Description (e.g., Emergency Fund, Vacation)"
+              style={{ flex: 1, minWidth: '200px' }}
+            />
+            <button type="submit">Add Recurring</button>
+          </div>
+        </form>
+
+        {/* List of recurring savings */}
+        {recurringSavings.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {recurringSavings.map((sav) => (
+              <div key={sav.id} style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '15px',
+                background: 'rgba(255, 255, 255, 0.9)',
+                borderRadius: '10px',
+                border: '1px solid rgba(102, 126, 234, 0.2)'
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '16px' }}>
+                    {sav.description}
+                  </div>
+                  <div style={{ fontSize: '14px', color: '#666' }}>
+                    ${fromCents(sav.amount_cents).toFixed(2)} per month
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <button 
+                    onClick={() => onToggleRecurring(sav.id, sav.active)}
+                    style={{ 
+                      background: sav.active ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #6b7280, #4b5563)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      fontSize: '14px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {sav.active ? 'Active' : 'Inactive'}
+                  </button>
+                  <button 
+                    onClick={() => onDeleteRecurring(sav.id)}
+                    style={{
+                      background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      fontSize: '14px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ fontSize: '14px', color: '#666', marginTop: '15px' }}>
+          Total Active Recurring: ${fromCents(totalRecurringSavings).toFixed(2)} | 
+          Total Saved (recurring + one-offs): ${totalSavings.toFixed(2)}
         </div>
       </section>
 
@@ -105,39 +203,33 @@ export default function SavingsPage() {
             step="0.01" 
             value={amount} 
             onChange={e=>setAmount(e.target.value===""?"":parseFloat(e.target.value))} 
-            placeholder="Amount (e.g., 1000)" 
+            placeholder="Amount" 
           />
           <input 
             value={note} 
             onChange={e=>setNote(e.target.value)} 
-            placeholder="Note (optional)" 
+            placeholder="note (optional)" 
           />
-          <button type="submit">Transfer to Savings</button>
+          <button type="submit">Add Transfer</button>
         </form>
       </section>
 
       <section>
-        <h2>Savings Summary</h2>
+        <h2>Month Totals</h2>
         <div className="summary-grid">
           <div className="summary-item">
             <div className="summary-label">Recurring Savings</div>
-            <div className="summary-value">${fromCents(sum?.rec_savings_cents ?? 0).toFixed(2)}</div>
+            <div className="summary-value">${fromCents(totalRecurringSavings).toFixed(2)}</div>
           </div>
           <div className="summary-item">
             <div className="summary-label">One-off Transfers</div>
             <div className="summary-value">${fromCents(sum?.savings_oneoff_cents ?? 0).toFixed(2)}</div>
           </div>
           <div className="summary-item">
-            <div className="summary-label">Total Saved This Month</div>
+            <div className="summary-label">Total Saved</div>
             <div className="summary-value">${totalSavings.toFixed(2)}</div>
           </div>
         </div>
-      </section>
-
-      <section className="remaining-balance">
-        <h2>Remaining to Spend</h2>
-        <div className="remaining-amount">${fromCents(sum?.remaining_cents ?? 0).toFixed(2)}</div>
-        <div className="remaining-period">For {sum?.month_start}</div>
       </section>
 
       <Modal open={!!err} onClose={()=>setErr(null)} title="Blocked">
