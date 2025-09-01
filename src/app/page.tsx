@@ -1,28 +1,16 @@
 "use client";
-import { useEffect, useState } from "react";
-import { addIncome, fetchSummary, ensureProfile, deleteIncome, getIncomes } from "./actions";
-import { fromCents, getOrCreateDemoUser } from "@/lib/supabase";
+import { useState } from "react";
+import { addIncome, ensureProfile, deleteIncome } from "./actions";
+import { fromCents } from "@/lib/supabase";
 import { Modal } from "./components/Modal";
+import { LoadingSpinner } from "./components/LoadingSpinner";
+import { useApp } from "./context/AppContext";
 
 export default function Page() {
-  const [userId, setUserId] = useState<string | null>(null);
-  const [sum, setSum] = useState<any>(null);
-  const [incomes, setIncomes] = useState<any[]>([]);
+  const { userId, summary: sum, incomes, loading, refreshData } = useApp();
   const [income, setIncome] = useState<number | "">("");
   const [note, setNote] = useState("");
   const [err, setErr] = useState<string | null>(null);
-
-  useEffect(() => {
-    const id = getOrCreateDemoUser();
-    setUserId(id);
-    if (id) ensureProfile(id).then(() => refresh(id));
-  }, []);
-
-  async function refresh(id: string) {
-    const [s, i] = await Promise.all([fetchSummary(id), getIncomes(id)]);
-    setSum(s);
-    setIncomes(i);
-  }
 
   async function onAddIncome(e: React.FormEvent) {
     e.preventDefault(); 
@@ -35,7 +23,7 @@ export default function Page() {
     await addIncome(userId, amt, note);
     setIncome(""); 
     setNote("");
-    await refresh(userId);
+    await refreshData();
   }
 
   const savingsTotal = fromCents((sum?.rec_savings_cents ?? 0) + (sum?.savings_oneoff_cents ?? 0));
@@ -45,7 +33,15 @@ export default function Page() {
   async function onDeleteIncome(incomeId: string) {
     if (!userId) return;
     await deleteIncome(userId, incomeId);
-    await refresh(userId);
+    await refreshData();
+  }
+
+  if (loading) {
+    return (
+      <main>
+        <LoadingSpinner />
+      </main>
+    );
   }
 
   return (

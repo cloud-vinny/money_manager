@@ -1,6 +1,7 @@
 import './globals.css';
 import { ThemeToggle } from './components/ThemeToggle';
 import { getTheme, setTheme } from '@/lib/theme';
+import { AppProvider } from './context/AppContext';
 
 // Initialize theme on server side
 if (typeof window !== 'undefined') {
@@ -25,7 +26,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <a href="/investments">Investments</a>
             </nav>
           </header>
-          {children}
+          <AppProvider>
+            {children}
+          </AppProvider>
         </div>
       </body>
     </html>
