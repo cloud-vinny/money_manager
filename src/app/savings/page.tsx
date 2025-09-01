@@ -20,7 +20,7 @@ export default function SavingsPage() {
   const recurringSavings = recurringData.filter((item: any) => item.kind === 'savings');
 
   async function onToggleRecurring(id: string, currentActive: boolean) {
-    if(!userId) return;
+    if(!userId || userId === "demo-user-placeholder") return;
     const res = await setRecurringActive(userId, id, !currentActive);
     if(!res.ok) { 
       setErr("Not enough balance to activate this rule. Try reducing the amount first."); 
@@ -31,7 +31,7 @@ export default function SavingsPage() {
 
   async function onAddRecurring(e: React.FormEvent) {
     e.preventDefault();
-    if(!userId) return;
+    if(!userId || userId === "demo-user-placeholder") return;
     const amt = typeof newRecurringAmount==='number'?newRecurringAmount:parseFloat(String(newRecurringAmount||0));
     if(isNaN(amt)||amt<=0) { 
       setErr("Enter a valid amount."); 
@@ -52,7 +52,7 @@ export default function SavingsPage() {
   }
 
   async function onUpdateRecurring(id: string, currentAmount: number, currentDescription: string) {
-    if(!userId) return; 
+    if(!userId || userId === "demo-user-placeholder") return; 
     const amt = typeof amount==='number'?amount:parseFloat(String(amount||0));
     if(isNaN(amt)||amt<0) { 
       setErr("Enter a valid amount."); 
@@ -68,14 +68,14 @@ export default function SavingsPage() {
   }
 
   async function onDeleteRecurring(id: string) {
-    if(!userId) return;
+    if(!userId || userId === "demo-user-placeholder") return;
     await deleteRecurring(userId, id);
     await refreshData();
   }
 
   async function onOneOff(e: React.FormEvent) {
     e.preventDefault(); 
-    if(!userId) return;
+    if(!userId || userId === "demo-user-placeholder") return;
     const amt = typeof amount==='number'?amount:parseFloat(String(amount||0));
     if(isNaN(amt)||amt<=0) { 
       setErr("Enter a valid amount."); 

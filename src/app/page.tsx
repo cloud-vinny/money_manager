@@ -14,7 +14,7 @@ export default function Page() {
 
   async function onAddIncome(e: React.FormEvent) {
     e.preventDefault(); 
-    if (!userId) return;
+    if (!userId || userId === "demo-user-placeholder") return;
     const amt = typeof income === 'number' ? income : parseFloat(String(income||0));
     if (isNaN(amt) || amt <= 0) { 
       setErr("Enter a valid income amount."); 
@@ -31,7 +31,7 @@ export default function Page() {
   const spendTotal  = fromCents((sum?.rec_spend_cents ?? 0) + (sum?.expense_cents ?? 0));
 
   async function onDeleteIncome(incomeId: string) {
-    if (!userId) return;
+    if (!userId || userId === "demo-user-placeholder") return;
     await deleteIncome(userId, incomeId);
     await refreshData();
   }

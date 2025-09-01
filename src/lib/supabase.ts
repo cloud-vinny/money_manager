@@ -9,7 +9,7 @@ export const supabase = createClient(
 
 // Single-user demo id (persisted locally)
 export const getOrCreateDemoUser = () => {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined") return "demo-user-placeholder";
   let id = localStorage.getItem("demo_user_id");
   if (!id) { id = crypto.randomUUID(); localStorage.setItem("demo_user_id", id); }
   return id;

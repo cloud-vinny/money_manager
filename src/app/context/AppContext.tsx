@@ -27,10 +27,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         setLoading(true);
         const id = getOrCreateDemoUser();
-        setUserId(id);
         
-        if (id) {
+        // Only proceed if we have a real user ID (not the placeholder)
+        if (id && id !== "demo-user-placeholder") {
+          setUserId(id);
           await refreshData(id);
+        } else {
+          // Set a temporary placeholder user ID for server-side rendering
+          setUserId("demo-user-placeholder");
         }
       } catch (error) {
         console.error("Failed to initialize app:", error);
@@ -44,7 +48,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refreshData = async (id?: string) => {
     const targetId = id || userId;
-    if (!targetId) return;
+    if (!targetId || targetId === "demo-user-placeholder") return;
 
     try {
       setLoading(true);
