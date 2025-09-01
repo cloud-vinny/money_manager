@@ -26,14 +26,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const initializeApp = async () => {
       try {
         setLoading(true);
-        const id = getOrCreateDemoUser();
         
-        // Only proceed if we have a real user ID (not the placeholder)
-        if (id && id !== "demo-user-placeholder") {
+        // On client side, get the real user ID
+        if (typeof window !== "undefined") {
+          const id = getOrCreateDemoUser();
           setUserId(id);
-          await refreshData(id);
+          
+          // Fetch data with the real user ID
+          if (id && id !== "demo-user-placeholder") {
+            await refreshData(id);
+          }
         } else {
-          // Set a temporary placeholder user ID for server-side rendering
+          // On server side, use placeholder
           setUserId("demo-user-placeholder");
         }
       } catch (error) {
