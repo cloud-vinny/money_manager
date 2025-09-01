@@ -1,13 +1,13 @@
 "use client";
-import { useEffect, useState } from "react";
-import { addInvestmentTrade, ensureProfile, fetchSummary, getRecurring, setRecurringActive, addRecurring, updateRecurring, deleteRecurring } from "../actions";
-import { fromCents, getOrCreateDemoUser } from "@/lib/supabase";
+import { useState } from "react";
+import { addInvestmentTrade, ensureProfile, setRecurringActive, addRecurring, updateRecurring, deleteRecurring } from "../actions";
+import { fromCents } from "@/lib/supabase";
 import { Modal } from "../components/Modal";
+import { LoadingSpinner } from "../components/LoadingSpinner";
+import { useApp } from "../context/AppContext";
 
 export default function InvestmentsPage() {
-  const [userId, setUserId] = useState<string|null>(null);
-  const [sum, setSum] = useState<any>(null);
-  const [recurringInvestments, setRecurringInvestments] = useState<any[]>([]);
+  const { userId, summary: sum, recurringData, loading, refreshData } = useApp();
   const [amount, setAmount] = useState<number|"">("");
   const [note, setNote] = useState("");
   const [err, setErr] = useState<string|null>(null);
@@ -16,17 +16,8 @@ export default function InvestmentsPage() {
   const [newRecurringAmount, setNewRecurringAmount] = useState<number|"">("");
   const [newRecurringDescription, setNewRecurringDescription] = useState("");
 
-  useEffect(() => {
-    const id = getOrCreateDemoUser(); 
-    setUserId(id);
-    if(id) ensureProfile(id).then(()=> refresh(id));
-  },[]);
-
-  async function refresh(id: string) {
-    const [s, r] = await Promise.all([fetchSummary(id), getRecurring(id)]);
-    setSum(s); 
-    setRecurringInvestments(r.filter((item: any) => item.kind === 'investment'));
-  }
+  // Filter recurring investments for investment category
+  const recurringInvestments = recurringData.filter((item: any) => item.kind === 'investment');
 
   async function onToggleRecurring(id: string, currentActive: boolean) {
     if(!userId) return;
@@ -35,7 +26,7 @@ export default function InvestmentsPage() {
       setErr("Not enough balance to activate this rule. Try reducing the amount first."); 
       return; 
     }
-    await refresh(userId);
+    await refreshData();
   }
 
   async function onAddRecurring(e: React.FormEvent) {
@@ -57,7 +48,7 @@ export default function InvestmentsPage() {
     }
     setNewRecurringAmount("");
     setNewRecurringDescription("");
-    await refresh(userId);
+    await refreshData();
   }
 
   async function onUpdateRecurring(id: string, currentAmount: number, currentDescription: string) {
@@ -73,13 +64,13 @@ export default function InvestmentsPage() {
       return; 
     }
     setAmount("");
-    await refresh(userId);
+    await refreshData();
   }
 
   async function onDeleteRecurring(id: string) {
     if(!userId) return;
     await deleteRecurring(userId, id);
-    await refresh(userId);
+    await refreshData();
   }
 
   async function onOneOff(e: React.FormEvent) {
@@ -97,7 +88,7 @@ export default function InvestmentsPage() {
     }
     setAmount(""); 
     setNote("");
-    await refresh(userId);
+    await refreshData();
   }
 
   const totalRecurringInvestments = recurringInvestments
@@ -105,6 +96,14 @@ export default function InvestmentsPage() {
     .reduce((sum: number, inv: any) => sum + inv.amount_cents, 0);
 
   const totalInvestments = fromCents(totalRecurringInvestments + (sum?.invest_oneoff_cents ?? 0));
+
+  if (loading) {
+    return (
+      <main>
+        <LoadingSpinner />
+      </main>
+    );
+  }
 
   return (
     <main>

@@ -3,11 +3,7 @@ import { ThemeToggle } from './components/ThemeToggle';
 import { getTheme, setTheme } from '@/lib/theme';
 import { AppProvider } from './context/AppContext';
 
-// Initialize theme on server side
-if (typeof window !== 'undefined') {
-  const theme = getTheme();
-  setTheme(theme);
-}
+// Theme will be initialized on the client side in ThemeToggle component
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
