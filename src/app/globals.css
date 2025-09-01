@@ -60,7 +60,7 @@ header {
 header h1 {
   font-size: 2.5rem;
   margin-bottom: 20px;
-  color: #1e293b;
+  color: var(--text-primary);
   font-weight: 700;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -73,17 +73,17 @@ nav {
 
 nav a {
   text-decoration: none;
-  color: #1e293b;
+  color: var(--text-primary);
   padding: 12px 20px;
   border-radius: 12px;
   transition: all 0.3s ease;
   font-weight: 500;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: var(--nav-bg);
+  border: 1px solid var(--nav-border);
 }
 
 nav a:hover {
-  background: rgba(59, 130, 246, 0.2);
+  background: var(--nav-bg);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
@@ -95,12 +95,12 @@ main {
 }
 
 section {
-  background: rgba(248, 250, 252, 0.95);
+  background: var(--card-bg);
   backdrop-filter: blur(10px);
   padding: 30px;
   border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  border: 1px solid rgba(203, 213, 225, 0.4);
+  box-shadow: 0 8px 32px var(--card-shadow);
+  border: 1px solid var(--card-border);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
